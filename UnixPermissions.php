@@ -3,9 +3,9 @@
 /**
  * Class to manupilate and convert unix-style permissions
  * example: UnixPermissions::fromString('rw-rw-rw-')->asNumeric() // 666
- * example: UnixPermissions::fromNumeric(666)->unset('group', 'read')->asNumeric() // 646
- * example: UnixPermissions::fromNumeric(646)->set('group', 'read')->asString() // 'rw-rw-rw-'
- * example: UnixPermissions::fromString('rw-rw-rw-')->can('group', 'read')->asString() // true
+ * example: UnixPermissions::fromNumeric(666)->unset('group', 'read')->asNumeric() // 626
+ * example: UnixPermissions::fromNumeric(646)->set('group', 'write')->asString() // 'rw-rw-rw-'
+ * example: UnixPermissions::fromString('rw-rw-rw-')->can('group', 'read') // true
  */
 class UnixPermissions{
 	private static $perms_map = [
@@ -41,7 +41,7 @@ class UnixPermissions{
 	 * @return UnixPermissions
 	 */
 	public static function fromNumeric($nums){
-		$parts = str_split("$nums");
+		$parts = str_split(str_pad("$nums", 3, '0'));
 		if(count($parts)!==3&&count($parts)!==4) throw new Exception("Invalid numeric permission.");
 		if(count($parts)===4) array_shift($parts);
 		foreach($parts as $part){
@@ -55,7 +55,7 @@ class UnixPermissions{
 	 * @return int
 	 */
 	public function asNumeric(){
-		return $this->numeric_perms;
+		return str_pad("{$this->numeric_perms}", 3, '0');
 	}
 
 	/**
@@ -74,10 +74,10 @@ class UnixPermissions{
 	 * @return bool
 	 */
 	public function can($userType, $permission){
-		$parts = str_split("{$this->numeric_perms}");
+		$parts = str_split(str_pad("{$this->numeric_perms}", 3, '0'));
 		$type_idx = array_search($userType, ['owner', 'group', 'public']);
 		if(false === $type_idx) throw new Exception('Invalid argument: $userType');
-		$perms = ['write'=>'w','read'=>'r','execute'=>'x'];
+		$perms = ['read'=>'r','write'=>'w','execute'=>'x'];
 		if(empty($perms[$permission])) throw new Exception('Invalid argument: $permission');
 		$permstr = self::$perms_map[intval($parts[$type_idx])];
 		return false !== strpos($permstr, $perms[$permission]);
@@ -91,16 +91,36 @@ class UnixPermissions{
 	 * @return bool
 	 */
 	public function set($userType, $permission){
-		$parts = str_split("{$this->numeric_perms}");
+		// Split the number into individual numbers: 777 -> ['7', '7', '7']
+		$parts = str_split(str_pad("{$this->numeric_perms}", 3, '0'));
+
+		// Determine the number that we're operating on: // 0 for owner, 1 for group, etc
 		$type_idx = array_search($userType, ['owner', 'group', 'public']);
 		if(false === $type_idx) throw new Exception('Invalid argument: $userType');
-		$perms = ['write'=>'w','read'=>'r','execute'=>'x'];
+
+		// Map to convert long form to short form permissions string, and permission index
+		$perms = ['read'=>'r','write'=>'w','execute'=>'x'];
 		if(empty($perms[$permission])) throw new Exception('Invalid argument: $permission');
+
+		// Get the permissions string that corresponds with the permission that we're operating on, eg. '---' for 0
 		$permstr = self::$perms_map[intval($parts[$type_idx])];
+
+		// Split the permission string: ['-','-','-'] for '---'
 		$str_parts = str_split($permstr);
-		$str_parts[array_search($perms[$permission], array_values($perms))] = $perms[$permission];
+
+		// Index of the permission string to change, eg. 0 for read, 1 for write, etc
+		$perm_idx = array_search($perms[$permission], array_values($perms));
+
+		// Set the appropriate index of the permissions string array to the appropriate permission letter: eg. ['-','-','-'] -> ['-','r','-']
+		$str_parts[$perm_idx] = $perms[$permission];
+
+		// Concat the permission string array into a single string: eg. ['r','-','-'] -> 'r--'
 		$new_str = implode('', $str_parts);
+
+		// Get the numeric value for the new permission string, eg 4 for 'r--', set it to the appropriate position in the numeric array
 		$parts[$type_idx] = array_search($new_str, self::$perms_map);
+
+		// Concat the numeric array, convert to a number and store it.
 		$this->numeric_perms = intval(implode('', $parts));
 		return $this;
 	}
@@ -113,10 +133,10 @@ class UnixPermissions{
 	 * @return bool
 	 */
 	public function unset($userType, $permission){
-		$parts = str_split("{$this->numeric_perms}");
+		$parts = str_split(str_pad("{$this->numeric_perms}", 3, '0'));
 		$type_idx = array_search($userType, ['owner', 'group', 'public']);
 		if(false === $type_idx) throw new Exception('Invalid argument: $userType');
-		$perms = ['write'=>'w','read'=>'r','execute'=>'x'];
+		$perms = ['read'=>'r','write'=>'w','execute'=>'x'];
 		if(empty($perms[$permission])) throw new Exception('Invalid argument: $permission');
 		$permstr = self::$perms_map[intval($parts[$type_idx])];
 		$str_parts = str_split($permstr);
@@ -129,7 +149,7 @@ class UnixPermissions{
 
 	private static function numToStr($nums){
 		$str = '';
-		$parts=str_split($nums);
+		$parts = str_split(str_pad("$nums", 3, '0'));
 		if(count($parts)!==3&&count($parts)!==4) throw new Exception("Invalid numeric permission.");
 		if(count($parts)===4) array_shift($parts);
 		foreach($parts as $part){
