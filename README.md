@@ -9,9 +9,3 @@ Also, if the process doesn't have execute access to one of the parent folders it
 # Testing
 
 Clone the repo and make `mydir` or `mydir/myfile.txt` inaccessible by changing either it's owner, group, or permission. Run the `test.php` file from the browser or the cli. It will list each access problem and provide a `chmod` command to resolve it. Run the commands and rerun `test.php` until it says it has read write access.
-
-# Known issues
-
-This works fine, as is, as far as I know, but the `UnixPermissions` class could be made more efficient by using bitwise operators instead of string manipulation.
-
-The `runcmd` is overkill for these purposes. I happened to have the function handy so I used it, but it could/should be replaced with a one-liner. This function is only used to get the groups that a given user belongs to because PHP's built in posix functions don't work as expected. See [this StackOverflow post](https://stackoverflow.com/questions/51737006/posix-getgrnam-returns-a-limited-number-of-members-from-members-array).
